@@ -1,0 +1,23 @@
+player,shots,goals,xG,xG_per_shot,goals_minus_xG,key_passes,goal_assists,pass_attempts,pass_accuracy,dribble_attempts,dribble_success_pct,obv_net
+Ayoub El Kaabi,23,2,3.63,0.158,-1.63,6,1,130,65.4,3,66.7,0.4684
+Mehdi Taremi,10,2,1.54,0.154,0.46,6,2,93,75.3,3,66.7,0.668
+Francisco Leonel Lima Silva Machado,14,1,0.92,0.066,0.08,14,2,180,76.1,9,66.7,1.1084
+Gelson Dany Batalha Martins,17,3,0.89,0.053,2.11,4,0,191,70.2,24,45.8,-0.1099
+Daniel Castelo Podence,9,0,0.46,0.051,-0.46,10,0,200,59.5,20,70.0,0.9715
+João Pedro Loureiro da Costa,6,1,0.4,0.066,0.6,1,0,205,69.8,8,62.5,2.5184
+Gabriel Tadeu Strefezza Rebelato,5,0,0.3,0.06,-0.3,1,1,51,62.7,3,33.3,0.2881
+Panagiotis Retsos,4,0,0.2,0.05,-0.2,0,0,276,83.7,2,100.0,1.3157
+Lorenzo Pirola,2,0,0.16,0.08,-0.16,2,0,292,80.5,0,0.0,0.5973
+Christos Mouzakitis,6,0,0.14,0.023,-0.14,8,0,277,77.6,8,75.0,0.302
+Daniel García Carrillo,3,0,0.11,0.038,-0.11,1,0,120,80.8,0,0.0,0.4945
+Santiago Hezze,3,1,0.09,0.03,0.91,5,1,245,81.2,3,66.7,1.4933
+Francisco Gabriel Ortega,2,0,0.06,0.032,-0.06,3,0,358,79.9,7,71.4,1.5184
+Giulian Biancone,1,0,0.05,0.049,-0.05,1,0,128,66.4,0,0.0,0.6538
+Stavros Pnevmonidis,1,0,0.03,0.03,-0.03,0,0,7,71.4,1,100.0,-0.0957
+Rodinei Marcelo de Almeida,0,0,0.0,0.0,0.0,6,2,297,68.0,13,53.8,2.2851
+Alexandros Paschalakis,0,0,0.0,0.0,0.0,0,0,23,87.0,0,0.0,0.1824
+Konstantinos Tzolakis,0,0,0.0,0.0,0.0,1,0,193,42.0,0,0.0,0.06
+Lorenzo Scipioni,0,0,0.0,0.0,0.0,0,0,30,76.7,0,0.0,0.0282
+Diogo Andre Santos Nascimento,0,0,0.0,0.0,0.0,1,0,20,80.0,1,0.0,0.8206
+Sopuruchukwu Bruno Onyemaechi,0,0,0.0,0.0,0.0,0,0,26,61.5,0,0.0,-0.0193
+Roman Yaremchuk,0,0,0.0,0.0,0.0,0,0,5,60.0,0,0.0,-0.0173
