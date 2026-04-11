@@ -283,48 +283,6 @@ def plot_pass_heatmap(match_ids, team, zip_path, save_path="heatmap_passes.png")
     plt.close()
 
 
-
-def normalize_direction(coords_with_period):
-    """
-    Flips coordinates so the team always attacks right (x > 60).
-    Based on average x in period 1: if > 60, team attacks left in period 1
-    and coordinates need to be flipped.
-
-    coords_with_period: list of (x, y, period)
-    Returns list of (x, y) normalized.
-    """
-    p1 = [(x, y) for x, y, period in coords_with_period if period == 1]
-    if not p1:
-        return [(x, y) for x, y, _ in coords_with_period]
-
-    avg_x_p1 = sum(x for x, y in p1) / len(p1)
-    flip_p1 = avg_x_p1 > 60
-
-    result = []
-    for x, y, period in coords_with_period:
-        if (period == 1 and flip_p1) or (period == 2 and not flip_p1):
-            result.append((120 - x, 80 - y))
-        else:
-            result.append((x, y))
-    return result
-
-def get_attack_direction(events):
-    """
-    Determines attack direction for a match by looking at the team's
-    average x position of passes in period 1.
-    Returns True if coordinates need to be flipped (team attacks left in period 1).
-    """
-    p1_x = [
-        ev["location"][0]
-        for ev in events
-        if ev.get("type", {}).get("id") == 30
-        and ev.get("period") == 1
-        and ev.get("location")
-    ]
-    if not p1_x:
-        return False
-    return np.mean(p1_x) > 60
-
 def plot_passing_network(match_ids, team, zip_path,
                          save_path="passing_network.png",
                          min_passes=10, top_n_players=16):
@@ -355,43 +313,6 @@ def plot_passing_network(match_ids, team, zip_path,
         edges[key]["obv"] += ev.get("obv_total_net") or 0.0
         player_positions[passer].append((loc[0], loc[1], ev.get("period", 1)))
 
-    # (not) replaced above with this flipping
-    # with zipfile.ZipFile(zip_path, "r") as zf:
-    #     names = zf.namelist()
-    #     for mid in match_ids:
-    #         candidates = [n for n in names if n.endswith(f"{mid}.json")]
-    #         if not candidates:
-    #             continue
-    #         with zf.open(candidates[0]) as f:
-    #             events = json.load(f)
-
-    #         # determine flip once per match
-    #         team_pass_events = [
-    #             ev for ev in events
-    #             if ev.get("team", {}).get("name") == team
-    #             and ev.get("type", {}).get("id") == 30
-    #         ]
-    #         flip = get_attack_direction(team_pass_events)
-
-    #         for ev in team_pass_events:
-    #             p = ev.get("pass", {})
-    #             if p.get("outcome", {}).get("id") in (9, 74, 75, 76, 77):
-    #                 continue
-    #             passer    = ev.get("player", {}).get("name")
-    #             recipient = p.get("recipient", {}).get("name") if p.get("recipient") else None
-    #             loc       = ev.get("location")
-    #             if not passer or not recipient or not loc:
-    #                 continue
-
-    #             x, y = loc[0], loc[1]
-    #             if flip:
-    #                 x, y = 120 - x, 80 - y
-
-    #             key = (passer, recipient)
-    #             edges[key]["count"] += 1
-    #             edges[key]["obv"]   += ev.get("obv_total_net") or 0.0
-    #             player_positions[passer].append((x, y))
-
     # top N players by total pass volume (in or out)
     player_volume = defaultdict(int)
     for (p, r), d in edges.items():
@@ -415,9 +336,6 @@ def plot_passing_network(match_ids, team, zip_path,
     for player in G.nodes():
         locs = player_positions.get(player, [])
         if locs:
-            # normalized = normalize_direction(locs)
-            # pos[player] = (np.mean([l[0] for l in normalized]),
-                        #    np.mean([l[1] for l in normalized]))
             pos[player] = (np.mean([l[0] for l in locs]),
                            np.mean([l[1] for l in locs]))
         else:
