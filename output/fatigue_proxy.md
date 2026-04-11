@@ -1,0 +1,24 @@
+| player                              |   errors_0_30 |   events_0_30 |   error_rate_0_30 |   errors_70_90 |   events_70_90 |   error_rate_70_90 |   fatigue_delta |
+|:------------------------------------|--------------:|--------------:|------------------:|---------------:|---------------:|-------------------:|----------------:|
+| Roman Yaremchuk                     |             0 |             0 |              0    |              3 |             26 |              11.54 |           11.54 |
+| Mehdi Taremi                        |             0 |            78 |              0    |              9 |            237 |               3.8  |            3.8  |
+| Daniel Castelo Podence              |             5 |           321 |              1.56 |              7 |            131 |               5.34 |            3.78 |
+| Sopuruchukwu Bruno Onyemaechi       |             0 |             0 |              0    |              2 |             73 |               2.74 |            2.74 |
+| Lorenzo Scipioni                    |             0 |             0 |              0    |              3 |            119 |               2.52 |            2.52 |
+| Stavros Pnevmonidis                 |             0 |             0 |              0    |              1 |             43 |               2.33 |            2.33 |
+| Gelson Dany Batalha Martins         |            11 |           369 |              2.98 |             10 |            189 |               5.29 |            2.31 |
+| Diogo Andre Santos Nascimento       |             0 |             0 |              0    |              1 |             62 |               1.61 |            1.61 |
+| João Pedro Loureiro da Costa        |             0 |           207 |              0    |              4 |            284 |               1.41 |            1.41 |
+| Francisco Gabriel Ortega            |             3 |           422 |              0.71 |              4 |            223 |               1.79 |            1.08 |
+| Rodinei Marcelo de Almeida          |             3 |           344 |              0.87 |              2 |            141 |               1.42 |            0.55 |
+| Panagiotis Retsos                   |             0 |           261 |              0    |              1 |            204 |               0.49 |            0.49 |
+| Christos Mouzakitis                 |             3 |           272 |              1.1  |              2 |            180 |               1.11 |            0.01 |
+| Daniel García Carrillo              |             0 |           188 |              0    |              0 |             51 |               0    |            0    |
+| Konstantinos Tzolakis               |             0 |           196 |              0    |              0 |            121 |               0    |            0    |
+| Giulian Biancone                    |             0 |            68 |              0    |              0 |            147 |               0    |            0    |
+| Lorenzo Pirola                      |             0 |           350 |              0    |              0 |             92 |               0    |            0    |
+| Alexandros Paschalakis              |             0 |            23 |              0    |              0 |             11 |               0    |            0    |
+| Ayoub El Kaabi                      |             9 |           292 |              3.08 |              5 |            174 |               2.87 |           -0.21 |
+| Gabriel Tadeu Strefezza Rebelato    |             1 |            48 |              2.08 |              2 |            111 |               1.8  |           -0.28 |
+| Francisco Leonel Lima Silva Machado |             7 |           311 |              2.25 |              1 |            138 |               0.72 |           -1.53 |
+| Santiago Hezze                      |             4 |           255 |              1.57 |              0 |            177 |               0    |           -1.57 |

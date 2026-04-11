@@ -26,34 +26,16 @@ def load_events(match_ids, zip_path):
                     records.append((mid, ev))
     return records
 
-
-def load_lineups(match_ids, zip_path):
-    """Return a dict {player_id: player_name} across all matches."""
-    players = {}
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        names = zf.namelist()
-        for mid in match_ids:
-            candidates = [n for n in names if n.endswith(f"{mid}_lineup.json")]
-            if not candidates:
-                continue
-            with zf.open(candidates[0]) as f:
-                for team_entry in json.load(f):
-                    for p in team_entry["lineup"]:
-                        players[p["player_id"]] = p["player_name"]
-    return players
-
-
 def team_events(records, team):
     """Filter events belonging to a specific team."""
     return [(mid, ev) for mid, ev in records if ev.get("team", {}).get("name") == team]
-
 
 
 def physical_stats(match_ids, team, zip_path):
     """
     Computes per-player physical/defensive indicators:
       - miscontrol_count        : type 38 events
-      - miscontrol_under_pressure : misctrols while under_pressure == True
+      - miscontrol_under_pressure : miscontrols while under_pressure == True
       - dispossessed_count      : type 3
       - foul_committed_count    : type 22
       - aerial_duel_lost        : duel type 10 (Aerial Lost)
@@ -664,6 +646,17 @@ def corner_analysis(match_ids, team, zip_path):
     return pd.concat([df, summary], ignore_index=True)
 
 
+def csv_to_markdown(csv_path, output_path=None):
+    df = pd.read_csv(csv_path)
+    md = df.to_markdown(index=False)
+    
+    if output_path:
+        with open(output_path, "w") as f:
+            f.write(md)
+        print(f"Saved: {output_path}")
+    else:
+        print(md)
+
 
 if __name__ == "__main__":
     matches_df = pd.read_csv(MATCHES_CSV)
@@ -762,6 +755,32 @@ if __name__ == "__main__":
     corners.to_csv(os.path.join(OUTPUT_DIR, "corner_analysis.csv"), index=False)
 
     print(f"Saved CSVs to {OUTPUT_DIR}/")
+
+
+    # save as markdown as well
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "physical_stats.csv"),
+                    os.path.join(OUTPUT_DIR, "physical_stats.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "technical_stats.csv"),
+                    os.path.join(OUTPUT_DIR, "technical_stats.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "poor_shots.csv"),
+                    os.path.join(OUTPUT_DIR, "poor_shots.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "pass_network.csv"),
+                    os.path.join(OUTPUT_DIR, "pass_network.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "flow_centrality.csv"),
+                    os.path.join(OUTPUT_DIR, "flow_centrality.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "pass_clusters.csv"),
+                    os.path.join(OUTPUT_DIR, "pass_clusters.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "fatigue_proxy.csv"),
+                    os.path.join(OUTPUT_DIR, "fatigue_proxy.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "injury_proneness.csv"),
+                    os.path.join(OUTPUT_DIR, "injury_proneness.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "shot_distance.csv"),
+                    os.path.join(OUTPUT_DIR, "shot_distance.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "xg_by_passer.csv"),
+                    os.path.join(OUTPUT_DIR, "xg_by_passer.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "corner_analysis.csv"),
+                    os.path.join(OUTPUT_DIR, "corner_analysis.md"))
+
 
 
 '''

@@ -1,0 +1,8 @@
+| player                              |   corners_taken |   led_to_shot |   led_to_goal |   shot_rate_pct |   goal_rate_pct |
+|:------------------------------------|----------------:|--------------:|--------------:|----------------:|----------------:|
+| Rodinei Marcelo de Almeida          |              16 |             3 |             1 |            18.8 |             6.2 |
+| Francisco Leonel Lima Silva Machado |               7 |             3 |             1 |            42.9 |            14.3 |
+| Christos Mouzakitis                 |               6 |             2 |             0 |            33.3 |             0   |
+| Gabriel Tadeu Strefezza Rebelato    |               5 |             0 |             0 |             0   |             0   |
+| Daniel Castelo Podence              |               2 |             0 |             0 |             0   |             0   |
+| TEAM TOTAL                          |              36 |             8 |             2 |            22.2 |             5.6 |
