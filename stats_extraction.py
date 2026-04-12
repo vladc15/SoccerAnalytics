@@ -31,6 +31,357 @@ def team_events(records, team):
     return [(mid, ev) for mid, ev in records if ev.get("team", {}).get("name") == team]
 
 
+def load_match_events(match_ids, zip_path):
+    """Load events keyed by match_id to preserve within-match sequencing."""
+    events_by_match = {}
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        names = set(zf.namelist())
+        for mid in match_ids:
+            name = f"{mid}.json"
+            if name not in names:
+                print(f"  warning: {name} not found")
+                continue
+            with zf.open(name) as f:
+                events_by_match[mid] = json.load(f)
+    return events_by_match
+
+
+def event_type_name(ev):
+    return ev.get("type", {}).get("name") or "Unknown"
+
+
+def player_name(ev):
+    return ev.get("player", {}).get("name")
+
+
+def event_descriptor(ev):
+    """Compact label for the event outcome used in CSV detail columns."""
+    etype = event_type_name(ev)
+
+    if etype == "Pass":
+        outcome = ev.get("pass", {}).get("outcome", {}).get("name")
+        return f"Pass - {outcome or 'Complete'}"
+    if etype == "Dribble":
+        outcome = ev.get("dribble", {}).get("outcome", {}).get("name")
+        return f"Dribble - {outcome or 'Unknown'}"
+    if etype == "Duel":
+        outcome = ev.get("duel", {}).get("outcome", {}).get("name")
+        return f"Duel - {outcome or 'Unknown'}"
+    if etype == "Shot":
+        outcome = ev.get("shot", {}).get("outcome", {}).get("name")
+        return f"Shot - {outcome or 'Unknown'}"
+    if etype == "Goal Keeper":
+        outcome = ev.get("goalkeeper", {}).get("outcome", {}).get("name")
+        return f"Goal Keeper - {outcome or 'Unknown'}"
+    if etype == "50/50":
+        outcome = ev.get("50_50", {}).get("outcome", {}).get("name")
+        return f"50/50 - {outcome or 'Unknown'}"
+    if etype == "Bad Behaviour":
+        card = ev.get("bad_behaviour", {}).get("card", {}).get("name")
+        return f"Bad Behaviour - {card or 'Unknown'}"
+    return etype
+
+
+def classify_pressure_episode(last_ev):
+    """
+    Classify the final event of a consolidated under-pressure episode.
+
+    Returns:
+      - pass_success
+      - shot
+      - dribble_escape
+      - duel_escape
+      - other_success
+      - primary_mistake
+      - other_mistake
+    """
+    etype = event_type_name(last_ev)
+    descriptor = event_descriptor(last_ev)
+
+    if etype == "Pass":
+        if last_ev.get("pass", {}).get("outcome"):
+            return "primary_mistake", descriptor
+        return "pass_success", descriptor
+
+    if etype == "Shot":
+        return "shot", descriptor
+
+    if etype == "Miscontrol":
+        return "primary_mistake", descriptor
+
+    if etype == "Dispossessed":
+        return "primary_mistake", descriptor
+
+    if etype == "Dribble":
+        outcome = last_ev.get("dribble", {}).get("outcome", {}).get("name")
+        if outcome == "Complete":
+            return "dribble_escape", descriptor
+        return "other_mistake", descriptor
+
+    if etype == "Duel":
+        outcome = last_ev.get("duel", {}).get("outcome", {}).get("name")
+        if outcome in {"Lost In Play", "Lost Out"}:
+            return "primary_mistake", descriptor
+        if outcome in {"Won", "Success In Play", "Success Out"}:
+            return "duel_escape", descriptor
+        return "other_success", descriptor
+
+    if etype == "50/50":
+        outcome = last_ev.get("50_50", {}).get("outcome", {}).get("name")
+        if outcome and "Lost" in outcome:
+            return "other_mistake", descriptor
+        return "other_success", descriptor
+
+    # Carry / Clearance / Foul Won / Ball Recovery / etc.
+    return "other_success", descriptor
+
+
+def first_possession_regain_index(events, start_idx, team):
+    """
+    Return the first global event index where team is back in possession
+    after a mistake sequence. Returns len(events) if possession is not regained.
+    """
+    for idx in range(start_idx, len(events)):
+        if events[idx].get("possession_team", {}).get("name") == team:
+            return idx
+    return len(events)
+
+
+def scan_mistake_fallout(events, start_idx, regain_idx, team, player):
+    """
+    Inspect events after a mistake until the team regains possession.
+
+    Tracks whether the same player commits a foul or gets booked, and whether
+    the team concedes during the opponent possession(s).
+    """
+    fallout = {
+        "fouled_after_mistake": False,
+        "booked_after_mistake": False,
+        "conceded_after_mistake": False,
+    }
+
+    for ev in events[start_idx:regain_idx]:
+        etype = event_type_name(ev)
+        ev_player = player_name(ev)
+
+        if etype == "Foul Committed" and ev_player == player:
+            fallout["fouled_after_mistake"] = True
+            card = ev.get("foul_committed", {}).get("card", {}).get("name")
+            if card:
+                fallout["booked_after_mistake"] = True
+
+        if etype == "Bad Behaviour" and ev_player == player:
+            card = ev.get("bad_behaviour", {}).get("card", {}).get("name")
+            if card:
+                fallout["booked_after_mistake"] = True
+
+        if (
+            etype == "Shot"
+            and ev.get("team", {}).get("name") != team
+            and ev.get("shot", {}).get("outcome", {}).get("name") == "Goal"
+        ):
+            fallout["conceded_after_mistake"] = True
+
+        if etype == "Own Goal Against" and ev.get("team", {}).get("name") == team:
+            fallout["conceded_after_mistake"] = True
+
+    return fallout
+
+
+def summarize_counter(counter_obj):
+    if not counter_obj:
+        return ""
+    return "; ".join(
+        f"{label} ({count})"
+        for label, count in sorted(counter_obj.items(), key=lambda item: (-item[1], item[0]))
+    )
+
+
+def iter_pressure_episodes(events, team):
+    """
+    Yield consolidated under-pressure episodes for a team.
+
+    An episode is a consecutive sequence of team events by the same player in the
+    same possession while `under_pressure` stays true.
+    """
+    team_ev = [ev for ev in events if ev.get("team", {}).get("name") == team and player_name(ev)]
+    global_index_lookup = {ev.get("index"): idx for idx, ev in enumerate(events)}
+
+    i = 0
+    while i < len(team_ev):
+        start_ev = team_ev[i]
+        if not start_ev.get("under_pressure"):
+            i += 1
+            continue
+
+        player = player_name(start_ev)
+        possession = start_ev.get("possession")
+
+        j = i + 1
+        while j < len(team_ev):
+            next_ev = team_ev[j]
+            if player_name(next_ev) != player:
+                break
+            if next_ev.get("possession") != possession:
+                break
+            if not next_ev.get("under_pressure"):
+                break
+            j += 1
+
+        last_ev = team_ev[j - 1]
+        yield {
+            "player": player,
+            "possession": possession,
+            "start_event": start_ev,
+            "last_event": last_ev,
+            "global_last_idx": global_index_lookup.get(last_ev.get("index")),
+        }
+        i = j
+
+
+def pressure_per_player(match_ids, team, zip_path):
+    """
+    Consolidate consecutive under-pressure events into player episodes.
+
+    For each player:
+      - count pressured episodes
+      - separate successful outcomes (pass, shot, dribble escape, duel escape)
+      - count primary mistakes and additional negative outcomes
+      - for mistakes, track if the same player fouled / got booked before
+        Olympiacos regained possession, and whether the team conceded
+    """
+    events_by_match = load_match_events(match_ids, zip_path)
+
+    stats = defaultdict(lambda: {
+        "under_pressure_episodes": 0,
+        "pass_success": 0,
+        "shot": 0,
+        "dribble_escape": 0,
+        "duel_escape": 0,
+        "other_success": 0,
+        "primary_mistake": 0,
+        "other_mistake": 0,
+        "mistake_total": 0,
+        "fouled_after_mistake": 0,
+        "booked_after_mistake": 0,
+        "conceded_after_mistake": 0,
+        "matches_played": set(),
+        "other_success_detail": defaultdict(int),
+        "other_mistake_detail": defaultdict(int),
+    })
+
+    for mid, events in events_by_match.items():
+        for episode in iter_pressure_episodes(events, team):
+            player = episode["player"]
+            last_ev = episode["last_event"]
+            bucket, descriptor = classify_pressure_episode(last_ev)
+            player_stats = stats[player]
+
+            player_stats["under_pressure_episodes"] += 1
+            player_stats["matches_played"].add(mid)
+
+            if bucket in {"pass_success", "shot", "dribble_escape", "duel_escape"}:
+                player_stats[bucket] += 1
+            elif bucket == "other_success":
+                player_stats["other_success"] += 1
+                player_stats["other_success_detail"][descriptor] += 1
+            elif bucket in {"primary_mistake", "other_mistake"}:
+                player_stats[bucket] += 1
+                player_stats["mistake_total"] += 1
+                if bucket == "other_mistake":
+                    player_stats["other_mistake_detail"][descriptor] += 1
+
+                global_last_idx = episode["global_last_idx"]
+                if global_last_idx is not None:
+                    regain_idx = first_possession_regain_index(events, global_last_idx + 1, team)
+                    fallout = scan_mistake_fallout(
+                        events,
+                        global_last_idx + 1,
+                        regain_idx,
+                        team,
+                        player,
+                    )
+                    for key, happened in fallout.items():
+                        if happened:
+                            player_stats[key] += 1
+
+    rows = []
+    for player, s in stats.items():
+        success_total = (
+            s["pass_success"] +
+            s["shot"] +
+            s["dribble_escape"] +
+            s["duel_escape"] +
+            s["other_success"]
+        )
+        rows.append({
+            "player": player,
+            "under_pressure_episodes": s["under_pressure_episodes"],
+            "successful_episodes": success_total,
+            "success_under_pressure_pct": round(
+                success_total / s["under_pressure_episodes"] * 100, 1
+            ) if s["under_pressure_episodes"] > 0 else 0.0,
+            "pass_success": s["pass_success"],
+            "shot": s["shot"],
+            "dribble_escape": s["dribble_escape"],
+            "duel_escape": s["duel_escape"],
+            "other_success": s["other_success"],
+            "primary_mistake": s["primary_mistake"],
+            "other_mistake": s["other_mistake"],
+            "mistake_total": s["mistake_total"],
+            "fouled_after_mistake": s["fouled_after_mistake"],
+            "booked_after_mistake": s["booked_after_mistake"],
+            "conceded_after_mistake": s["conceded_after_mistake"],
+            "other_success_detail": summarize_counter(s["other_success_detail"]),
+            "other_mistake_detail": summarize_counter(s["other_mistake_detail"]),
+            "matches_played": len(s["matches_played"]),
+        })
+
+    return pd.DataFrame(rows).sort_values(
+        ["under_pressure_episodes", "mistake_total"],
+        ascending=[False, False],
+    )
+
+
+def conceded_pressure_mistake_events(match_ids, team, zip_path):
+    """
+    Return full pressured-mistake events where the subsequent opponent phase
+    ended in a goal before the team regained possession.
+    """
+    events_by_match = load_match_events(match_ids, zip_path)
+    conceded_events = []
+
+    for mid, events in events_by_match.items():
+        for episode in iter_pressure_episodes(events, team):
+            last_ev = episode["last_event"]
+            bucket, _descriptor = classify_pressure_episode(last_ev)
+            if bucket not in {"primary_mistake", "other_mistake"}:
+                continue
+
+            global_last_idx = episode["global_last_idx"]
+            if global_last_idx is None:
+                continue
+
+            regain_idx = first_possession_regain_index(events, global_last_idx + 1, team)
+            fallout = scan_mistake_fallout(
+                events,
+                global_last_idx + 1,
+                regain_idx,
+                team,
+                episode["player"],
+            )
+            if fallout["conceded_after_mistake"]:
+                conceded_events.append({
+                    "match_id": mid,
+                    "player": episode["player"],
+                    "event_index": last_ev.get("index"),
+                    "event_type": event_type_name(last_ev),
+                    "event": last_ev,
+                })
+
+    return conceded_events
+
+
 def physical_stats(match_ids, team, zip_path):
     """
     Computes per-player physical/defensive indicators:
@@ -747,12 +1098,29 @@ if __name__ == "__main__":
     corners = corner_analysis(match_ids, TEAM_STATSBOMB, ZIP_PATH)
     print(corners.to_markdown(index=False))
 
+    print("\n=== PRESSURE PER PLAYER ===")
+    pressure_df = pressure_per_player(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    print(pressure_df.to_markdown(index=False))
+
+    print("\n=== PRESSURED MISTAKES THAT LED TO GOALS CONCEDED ===")
+    conceded_events = conceded_pressure_mistake_events(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    if conceded_events:
+        for item in conceded_events:
+            print(
+                f"match {item['match_id']} | player {item['player']} | "
+                f"event_index {item['event_index']} | type {item['event_type']}"
+            )
+            print(json.dumps(item["event"], ensure_ascii=True, indent=2))
+    else:
+        print("No pressured mistakes leading directly to conceded goals found.")
+
     # save to CSV
     fatigue.to_csv(os.path.join(OUTPUT_DIR, "fatigue_proxy.csv"), index=False)
     injuries.to_csv(os.path.join(OUTPUT_DIR, "injury_proneness.csv"), index=False)
     shot_dist.to_csv(os.path.join(OUTPUT_DIR, "shot_distance.csv"), index=False)
     xg_passer.to_csv(os.path.join(OUTPUT_DIR, "xg_by_passer.csv"), index=False)
     corners.to_csv(os.path.join(OUTPUT_DIR, "corner_analysis.csv"), index=False)
+    pressure_df.to_csv(os.path.join(OUTPUT_DIR, "pressure_per_payer.csv"), index=False)
 
     print(f"Saved CSVs to {OUTPUT_DIR}/")
 

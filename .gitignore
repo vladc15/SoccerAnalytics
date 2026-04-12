@@ -1,2 +1,5 @@
 .history
 /data
+*.mp4
+clips.txt
+.DS_Store
