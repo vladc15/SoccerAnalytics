@@ -1,0 +1,24 @@
+player,team,primary_position_id,primary_position_abbreviation,under_pressure_episodes,success_under_pressure_pct,mistake_total,mistake_under_pressure_pct,mistake_pct_rank_in_position,players_compared_at_position,matches_played,starts
+Alexandros Paschalakis,Olympiacos,1,GK,3,66.7,1,33.3,48,62,1,1
+Konstantinos Tzolakis,Olympiacos,1,GK,77,49.4,39,50.6,61,62,9,9
+João Pedro Loureiro da Costa,Olympiacos,2,RB,104,75.0,26,25.0,40,59,7,4
+Rodinei Marcelo de Almeida,Olympiacos,2,RB,153,73.2,41,26.8,45,59,8,8
+Panagiotis Retsos,Olympiacos,3,RCB,118,81.4,22,18.6,54,75,9,9
+Lorenzo Pirola,Olympiacos,5,LCB,113,77.0,26,23.0,54,64,10,10
+Giulian Biancone,Olympiacos,5,LCB,48,75.0,12,25.0,58,64,6,1
+Francisco Gabriel Ortega,Olympiacos,6,LB,182,75.3,45,24.7,27,52,10,10
+Stavros Pnevmonidis,Olympiacos,9,RDM,7,85.7,1,14.3,8,42,1,0
+Santiago Hezze,Olympiacos,9,RDM,141,78.7,30,21.3,22,42,9,8
+Daniel García Carrillo,Olympiacos,11,LDM,56,83.9,9,16.1,15,74,7,6
+Lorenzo Scipioni,Olympiacos,11,LDM,23,78.3,5,21.7,40,74,5,0
+Christos Mouzakitis,Olympiacos,11,LDM,108,77.8,24,22.2,44,74,9,7
+Roman Yaremchuk,Olympiacos,12,RM,5,40.0,3,60.0,19,19,1,0
+Gabriel Tadeu Strefezza Rebelato,Olympiacos,17,RW,41,73.2,11,26.8,22,57,4,1
+Gelson Dany Batalha Martins,Olympiacos,17,RW,214,70.1,64,29.9,30,57,9,9
+Diogo Andre Santos Nascimento,Olympiacos,19,CAM,18,77.8,4,22.2,13,41,2,0
+Mehdi Taremi,Olympiacos,19,CAM,106,71.7,30,28.3,25,41,10,4
+Francisco Leonel Lima Silva Machado,Olympiacos,19,CAM,103,69.9,31,30.1,32,41,10,8
+Daniel Castelo Podence,Olympiacos,21,LW,134,69.4,41,30.6,24,51,8,7
+Sopuruchukwu Bruno Onyemaechi,Olympiacos,21,LW,19,68.4,6,31.6,30,51,4,0
+André Luiz Inácio da Silva,Olympiacos,21,LW,20,60.0,8,40.0,42,51,2,0
+Ayoub El Kaabi,Olympiacos,23,ST,134,76.1,32,23.9,32,75,10,8

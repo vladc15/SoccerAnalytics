@@ -12,72 +12,16 @@ from scipy.ndimage import gaussian_filter
 import networkx as nx
 import os
 
-from stats_extraction import conceded_pressure_mistake_events
-
-
-ZIP_PATHS = [
-    "data/statsbomb/league_phase.zip",
-    "data/statsbomb/playoffs.zip",
-]
-
-
-def draw_pitch(ax, pitch_color="#1a1a2e", line_color="white", alpha=0.9):
-    ax.set_facecolor(pitch_color)
-    lw = 1.5
-
-    def line(x1, y1, x2, y2):
-        ax.plot([x1, x2], [y1, y2], color=line_color, lw=lw, alpha=alpha)
-
-    def rect(x, y, w, h):
-        ax.add_patch(mpatches.Rectangle(
-            (x, y), w, h,
-            fill=False, edgecolor=line_color, lw=lw, alpha=alpha
-        ))
-
-    rect(0, 0, 120, 80)
-    line(60, 0, 60, 80)
-    circle = plt.Circle((60, 40), 10, fill=False, color=line_color, lw=lw, alpha=alpha)
-    ax.add_patch(circle)
-    ax.plot(60, 40, "o", color=line_color, ms=2, alpha=alpha)
-
-    rect(0, 18, 18, 44) 
-    rect(102, 18, 18, 44)
-    rect(0, 30, 6, 20)
-    rect(114, 30, 6, 20)
-    ax.plot(12, 40, "o", color=line_color, ms=3, alpha=alpha)
-    ax.plot(108, 40, "o", color=line_color, ms=3, alpha=alpha)
-    arc_l = mpatches.Arc((12, 40), 20, 20, angle=0, theta1=308, theta2=52,
-                          color=line_color, lw=lw, alpha=alpha)
-    arc_r = mpatches.Arc((108, 40), 20, 20, angle=0, theta1=128, theta2=232,
-                          color=line_color, lw=lw, alpha=alpha)
-    ax.add_patch(arc_l)
-    ax.add_patch(arc_r)
-
-    ax.set_xlim(-2, 122)
-    ax.set_ylim(-2, 82)
-    ax.set_aspect("equal")
-    ax.axis("off")
-    return ax
-
-
-
-def load_events(match_ids, zip_paths):
-    records = []
-    for one_zip_path in zip_paths:
-        with zipfile.ZipFile(one_zip_path, "r") as zf:
-            names = zf.namelist()
-            for mid in match_ids:
-                candidates = [n for n in names if n.endswith(f"{mid}.json")]
-                if not candidates:
-                    continue
-                with zf.open(candidates[0]) as f:
-                    for ev in json.load(f):
-                        records.append((mid, ev))
-    return records
-
-def team_events(records, team):
-    return [(mid, ev) for mid, ev in records if ev.get("team", {}).get("name") == team]
-
+import under_pressure_stats as ups
+from utils import (
+    MATCHES_CSV,
+    TEAM_MATCHES_CSV,
+    ZIP_PATHS,
+    draw_pitch,
+    load_events,
+    make_heatmap,
+    team_events,
+)
 
 def extract_locations(records, team, type_ids):
     """Extract coords (x, y) for events in type_ids."""
@@ -91,22 +35,6 @@ def extract_locations(records, team, type_ids):
         if loc:
             coords.append((loc[0], loc[1]))
     return coords
-
-
-
-def make_heatmap(coords, sigma=3, bins=(120, 80)):
-    if not coords:
-        return np.zeros((bins[1], bins[0]))
-
-    heatmap, _, _ = np.histogram2d(
-        [c[0] for c in coords],
-        [c[1] for c in coords],
-        bins=bins,
-        range=[[0, 120], [0, 80]],
-    )
-    heatmap = heatmap.T
-    return gaussian_filter(heatmap, sigma=sigma)
-
 
 def conceded_pressure_mistake_locations(match_ids, team, zip_path):
     """
@@ -622,10 +550,175 @@ def plot_flow_centrality(match_ids, team, zip_path,
     plt.close()
 
 
+def plot_pressure_success_scatter(zip_paths, save_path="output/pressure_success_scatter.png", min_episodes=50):
+    """
+    Competition-wide scatter plot of under-pressure volume vs success rate.
+
+    X axis: pressured episodes
+    Y axis: success_under_pressure_pct
+    Only includes players with at least `min_episodes` pressured episodes.
+    Olympiacos players are highlighted and labeled.
+    """
+    match_ids = competition_match_ids(zip_paths)
+    competition_df = competition_pressure_per_player(match_ids, zip_paths)
+    filtered_df = competition_df[
+        competition_df["under_pressure_episodes"] >= min_episodes
+    ].copy()
+
+    if filtered_df.empty:
+        print(f"No players found with at least {min_episodes} under-pressure episodes.")
+        return
+
+    filtered_df["is_olympiacos"] = filtered_df["team"] == TEAM_STATSBOMB
+    top10_player_ids = set(
+        filtered_df.sort_values(
+            ["success_under_pressure_pct", "under_pressure_episodes", "player"],
+            ascending=[False, False, True],
+        ).head(10)["player_id"]
+    )
+    top10_volume_player_ids = set(
+        filtered_df.sort_values(
+            ["under_pressure_episodes", "success_under_pressure_pct", "player"],
+            ascending=[False, False, True],
+        ).head(10)["player_id"]
+    )
+    filtered_df["is_top10"] = filtered_df["player_id"].isin(top10_player_ids)
+    filtered_df["is_top10_volume"] = filtered_df["player_id"].isin(top10_volume_player_ids)
+
+    fig, ax = plt.subplots(figsize=(13, 9), facecolor="#1a1a2e")
+    ax.set_facecolor("#1a1a2e")
+
+    others = filtered_df[~filtered_df["is_olympiacos"] & ~filtered_df["is_top10"]]
+    top10_players = filtered_df[filtered_df["is_top10"]]
+    top10_volume_players = filtered_df[filtered_df["is_top10_volume"]]
+    olympiacos = filtered_df[filtered_df["is_olympiacos"]]
+
+    if not others.empty:
+        ax.scatter(
+            others["under_pressure_episodes"],
+            others["success_under_pressure_pct"],
+            s=55,
+            color="#8ecae6",
+            alpha=0.55,
+            edgecolors="none",
+            label=f"Other players ({len(others)})",
+        )
+
+    if not top10_volume_players.empty:
+        ax.scatter(
+            top10_volume_players["under_pressure_episodes"],
+            top10_volume_players["success_under_pressure_pct"],
+            s=220,
+            facecolors="none",
+            edgecolors="#4cc9f0",
+            linewidths=1.8,
+            marker="D",
+            label="Top 10 by episodes",
+            zorder=4,
+        )
+
+        for row in top10_volume_players.itertuples(index=False):
+            ax.annotate(
+                row.player.split()[-1],
+                (row.under_pressure_episodes, row.success_under_pressure_pct),
+                xytext=(8, 8),
+                textcoords="offset points",
+                color="#4cc9f0",
+                fontsize=8.5,
+                zorder=5,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground="#1a1a2e")],
+            )
+
+    if not top10_players.empty:
+        ax.scatter(
+            top10_players["under_pressure_episodes"],
+            top10_players["success_under_pressure_pct"],
+            s=220,
+            color="#90be6d",
+            alpha=0.95,
+            edgecolors="#f1fa8c",
+            linewidths=1.2,
+            marker="*",
+            label="Top 10 overall",
+            zorder=5,
+        )
+
+        for row in top10_players.itertuples(index=False):
+            ax.annotate(
+                row.player.split()[-1],
+                (row.under_pressure_episodes, row.success_under_pressure_pct),
+                xytext=(7, -10),
+                textcoords="offset points",
+                color="#f1fa8c",
+                fontsize=8.5,
+                zorder=6,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground="#1a1a2e")],
+            )
+
+    if not olympiacos.empty:
+        ax.scatter(
+            olympiacos["under_pressure_episodes"],
+            olympiacos["success_under_pressure_pct"],
+            s=120,
+            color="#ffb703",
+            alpha=0.95,
+            edgecolors="#d00000",
+            linewidths=1.0,
+            label=f"Olympiacos ({len(olympiacos)})",
+            zorder=6,
+        )
+
+        for row in olympiacos.itertuples(index=False):
+            ax.annotate(
+                row.player.split()[-1],
+                (row.under_pressure_episodes, row.success_under_pressure_pct),
+                xytext=(6, 6),
+                textcoords="offset points",
+                color="white",
+                fontsize=8,
+                zorder=5,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground="#1a1a2e")],
+            )
+
+    x_max = filtered_df["under_pressure_episodes"].max()
+    y_min = max(0, filtered_df["success_under_pressure_pct"].min() - 3)
+    y_max = min(100, filtered_df["success_under_pressure_pct"].max() + 3)
+
+    ax.axvline(filtered_df["under_pressure_episodes"].median(), color="white", alpha=0.12, linestyle="--")
+    ax.axhline(filtered_df["success_under_pressure_pct"].median(), color="white", alpha=0.12, linestyle="--")
+
+    ax.set_xlim(0, x_max + 20)
+    ax.set_ylim(y_min, y_max)
+    ax.set_xlabel("under-pressure episodes", color="white", fontsize=11)
+    ax.set_ylabel("success under pressure (%)", color="white", fontsize=11)
+    ax.set_title(
+        "Competition Under-Pressure Profile\n"
+        f"x = volume, y = success rate, min {min_episodes} episodes",
+        color="white",
+        fontsize=14,
+        fontweight="bold",
+        pad=12,
+    )
+    ax.tick_params(colors="white")
+    ax.spines[:].set_color("#444444")
+    ax.grid(color="white", alpha=0.08, linestyle="--")
+    ax.legend(facecolor="#0d0d1a", labelcolor="white", fontsize=10, framealpha=0.85, loc="lower right")
+
+    plt.tight_layout()
+    fig.savefig(save_path, dpi=160, bbox_inches="tight", facecolor="#1a1a2e")
+    print(f"Saved: {save_path}")
+    plt.close()
+
+
+# Under-pressure plotting now lives in `under_pressure_stats.py`.
+conceded_pressure_mistake_events = ups.conceded_pressure_mistake_events
+conceded_pressure_mistake_locations = ups.conceded_pressure_mistake_locations
+plot_pressure_heatmap = ups.plot_pressure_heatmap
+plot_pressure_success_scatter = ups.plot_pressure_success_scatter
+
+
 if __name__ == "__main__":
-    TEAM_MATCHES_CSV = "Olympiacos Piraeus"
     TEAM_JSON = "Olympiacos"
-    MATCHES_CSV = "data/matches.csv"
     OUT = "output/"
     os.makedirs(OUT, exist_ok=True)
 
@@ -652,3 +745,9 @@ if __name__ == "__main__":
     plot_flow_centrality(match_ids, TEAM_JSON, ZIP_PATHS,
                          OUT + "flow_centrality.png",
                          min_passes=5, top_n=20)
+
+    plot_pressure_success_scatter(
+        ZIP_PATHS,
+        OUT + "pressure_success_scatter.png",
+        min_episodes=50,
+    )

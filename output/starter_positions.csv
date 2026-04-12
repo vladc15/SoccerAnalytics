@@ -1,0 +1,24 @@
+position_id,position_abbreviation,position_name,player_name,display_name,starts_at_position,total_starts
+1,GK,Goalkeeper,Konstantinos Tzolakis,Konstantinos Tzolakis,9,9
+1,GK,Goalkeeper,Alexandros Paschalakis,Alexandros Paschalakis,1,1
+2,RB,Right Back,Rodinei Marcelo de Almeida,Rodinei,6,8
+2,RB,Right Back,João Pedro Loureiro da Costa,Costinha,4,4
+3,RCB,Right Center Back,Panagiotis Retsos,Panagiotis Retsos,9,9
+3,RCB,Right Center Back,Giulian Biancone,Giulian Biancone,1,1
+5,LCB,Left Center Back,Lorenzo Pirola,Lorenzo Pirola,10,10
+6,LB,Left Back,Francisco Gabriel Ortega,Francisco Ortega,10,10
+9,RDM,Right Defensive Midfield,Santiago Hezze,Santiago Hezze,7,8
+9,RDM,Right Defensive Midfield,Daniel García Carrillo,Dani García,3,6
+11,LDM,Left Defensive Midfield,Christos Mouzakitis,Christos Mouzakitis,7,7
+11,LDM,Left Defensive Midfield,Daniel García Carrillo,Dani García,3,6
+17,RW,Right Wing,Gelson Dany Batalha Martins,Gelson Martins,7,9
+17,RW,Right Wing,Rodinei Marcelo de Almeida,Rodinei,2,8
+17,RW,Right Wing,Gabriel Tadeu Strefezza Rebelato,Gabriel Strefezza,1,1
+19,CAM,Center Attacking Midfield,Francisco Leonel Lima Silva Machado,Chiquinho,7,8
+19,CAM,Center Attacking Midfield,Mehdi Taremi,Mehdi Taremi,2,4
+19,CAM,Center Attacking Midfield,Santiago Hezze,Santiago Hezze,1,8
+21,LW,Left Wing,Daniel Castelo Podence,Daniel Podence,7,7
+21,LW,Left Wing,Gelson Dany Batalha Martins,Gelson Martins,2,9
+21,LW,Left Wing,Francisco Leonel Lima Silva Machado,Chiquinho,1,8
+23,ST,Striker,Ayoub El Kaabi,Ayoub El Kaabi,8,8
+23,ST,Striker,Mehdi Taremi,Mehdi Taremi,2,4

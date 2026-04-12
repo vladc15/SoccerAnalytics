@@ -5,49 +5,16 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 
-TEAM_MATCHES_CSV = "Olympiacos Piraeus"
-TEAM_STATSBOMB = "Olympiacos"
-ZIP_PATHS = [
-    "data/statsbomb/league_phase.zip",
-    "data/statsbomb/playoffs.zip",
-]
-MATCHES_CSV = "data/matches.csv"
-
-def load_events(match_ids, zip_paths):
-    """Load all events for a list of match IDs from the zip archive.
-    Returns a flat list of (match_id, event) tuples."""
-    records = []
-
-    for one_zip_path in zip_paths:
-        with zipfile.ZipFile(one_zip_path, "r") as zf:
-            names = zf.namelist()
-            for mid in match_ids:
-                candidates = [n for n in names if n.endswith(f"{mid}.json")]
-                if not candidates:
-                    continue
-                with zf.open(candidates[0]) as f:
-                    for ev in json.load(f):
-                        records.append((mid, ev))
-    return records
-
-def team_events(records, team):
-    """Filter events belonging to a specific team."""
-    return [(mid, ev) for mid, ev in records if ev.get("team", {}).get("name") == team]
-
-
-def load_match_events(match_ids, zip_paths):
-    """Load events keyed by match_id to preserve within-match sequencing."""
-    events_by_match = {}
-    for one_zip_path in zip_paths:
-        with zipfile.ZipFile(one_zip_path, "r") as zf:
-            names = set(zf.namelist())
-            for mid in match_ids:
-                name = f"{mid}.json"
-                if name not in names:
-                    continue
-                with zf.open(name) as f:
-                    events_by_match[mid] = json.load(f)
-    return events_by_match
+import under_pressure_stats as ups
+from utils import (
+    MATCHES_CSV,
+    TEAM_MATCHES_CSV,
+    TEAM_STATSBOMB,
+    ZIP_PATHS,
+    csv_to_markdown,
+    load_events,
+    team_events,
+)
 
 
 def event_type_name(ev):
@@ -253,6 +220,7 @@ def iter_pressure_episodes(events, team):
             continue
 
         player = player_name(start_ev)
+        player_id = start_ev.get("player", {}).get("id")
         possession = start_ev.get("possession")
 
         j = i + 1
@@ -268,6 +236,7 @@ def iter_pressure_episodes(events, team):
 
         last_ev = team_ev[j - 1]
         yield {
+            "player_id": player_id,
             "player": player,
             "possession": possession,
             "start_event": start_ev,
@@ -277,20 +246,8 @@ def iter_pressure_episodes(events, team):
         i = j
 
 
-def pressure_per_player(match_ids, team, zip_paths):
-    """
-    Consolidate consecutive under-pressure events into player episodes.
-
-    For each player:
-      - count pressured episodes
-      - separate successful outcomes (pass, shot, dribble escape, duel escape)
-      - count primary mistakes and additional negative outcomes
-      - for mistakes, track if the same player fouled / got booked before
-        Olympiacos regained possession, and whether the team conceded
-    """
-    events_by_match = load_match_events(match_ids, zip_paths)
-
-    stats = defaultdict(lambda: {
+def empty_pressure_statline():
+    return {
         "under_pressure_episodes": 0,
         "pass_success": 0,
         "shot": 0,
@@ -304,47 +261,51 @@ def pressure_per_player(match_ids, team, zip_paths):
         "booked_after_mistake": 0,
         "conceded_after_mistake": 0,
         "matches_played": set(),
+        "team_counts": Counter(),
         "other_success_detail": defaultdict(int),
         "other_mistake_detail": defaultdict(int),
-    })
+    }
 
-    for mid, events in events_by_match.items():
-        for episode in iter_pressure_episodes(events, team):
-            player = episode["player"]
-            last_ev = episode["last_event"]
-            bucket, descriptor = classify_pressure_episode(last_ev)
-            player_stats = stats[player]
 
-            player_stats["under_pressure_episodes"] += 1
-            player_stats["matches_played"].add(mid)
+def apply_pressure_episode(stats, episode, events, team, match_id):
+    key = (episode["player_id"], episode["player"])
+    player_stats = stats[key]
+    last_ev = episode["last_event"]
+    bucket, descriptor = classify_pressure_episode(last_ev)
 
-            if bucket in {"pass_success", "shot", "dribble_escape", "duel_escape"}:
-                player_stats[bucket] += 1
-            elif bucket == "other_success":
-                player_stats["other_success"] += 1
-                player_stats["other_success_detail"][descriptor] += 1
-            elif bucket in {"primary_mistake", "other_mistake"}:
-                player_stats[bucket] += 1
-                player_stats["mistake_total"] += 1
-                if bucket == "other_mistake":
-                    player_stats["other_mistake_detail"][descriptor] += 1
+    player_stats["under_pressure_episodes"] += 1
+    player_stats["matches_played"].add(match_id)
+    player_stats["team_counts"][team] += 1
 
-                global_last_idx = episode["global_last_idx"]
-                if global_last_idx is not None:
-                    regain_idx = first_possession_regain_index(events, global_last_idx + 1, team)
-                    fallout = scan_mistake_fallout(
-                        events,
-                        global_last_idx + 1,
-                        regain_idx,
-                        team,
-                        player,
-                    )
-                    for key, happened in fallout.items():
-                        if happened:
-                            player_stats[key] += 1
+    if bucket in {"pass_success", "shot", "dribble_escape", "duel_escape"}:
+        player_stats[bucket] += 1
+    elif bucket == "other_success":
+        player_stats["other_success"] += 1
+        player_stats["other_success_detail"][descriptor] += 1
+    elif bucket in {"primary_mistake", "other_mistake"}:
+        player_stats[bucket] += 1
+        player_stats["mistake_total"] += 1
+        if bucket == "other_mistake":
+            player_stats["other_mistake_detail"][descriptor] += 1
 
+        global_last_idx = episode["global_last_idx"]
+        if global_last_idx is not None:
+            regain_idx = first_possession_regain_index(events, global_last_idx + 1, team)
+            fallout = scan_mistake_fallout(
+                events,
+                global_last_idx + 1,
+                regain_idx,
+                team,
+                episode["player"],
+            )
+            for field, happened in fallout.items():
+                if happened:
+                    player_stats[field] += 1
+
+
+def pressure_dataframe_from_stats(stats, include_team=False):
     rows = []
-    for player, s in stats.items():
+    for (player_id, player), s in stats.items():
         success_total = (
             s["pass_success"] +
             s["shot"] +
@@ -352,7 +313,8 @@ def pressure_per_player(match_ids, team, zip_paths):
             s["duel_escape"] +
             s["other_success"]
         )
-        rows.append({
+        row = {
+            "player_id": player_id,
             "player": player,
             "under_pressure_episodes": s["under_pressure_episodes"],
             "successful_episodes": success_total,
@@ -376,12 +338,156 @@ def pressure_per_player(match_ids, team, zip_paths):
             "other_success_detail": summarize_counter(s["other_success_detail"]),
             "other_mistake_detail": summarize_counter(s["other_mistake_detail"]),
             "matches_played": len(s["matches_played"]),
-        })
+        }
+        if include_team:
+            row["team"] = most_common_value(s["team_counts"])
+        rows.append(row)
+
+    if not rows:
+        return pd.DataFrame()
 
     return pd.DataFrame(rows).sort_values(
-        ["under_pressure_episodes", "mistake_total"],
-        ascending=[False, False],
+        ["under_pressure_episodes", "mistake_total", "player"],
+        ascending=[False, False, True],
+    ).reset_index(drop=True)
+
+
+def pressure_per_player(match_ids, team, zip_paths):
+    """
+    Consolidate consecutive under-pressure events into player episodes.
+
+    For each player:
+      - count pressured episodes
+      - separate successful outcomes (pass, shot, dribble escape, duel escape)
+      - count primary mistakes and additional negative outcomes
+      - for mistakes, track if the same player fouled / got booked before
+        Olympiacos regained possession, and whether the team conceded
+    """
+    events_by_match = load_match_events(match_ids, zip_paths)
+    stats = defaultdict(empty_pressure_statline)
+
+    for mid, events in events_by_match.items():
+        for episode in iter_pressure_episodes(events, team):
+            apply_pressure_episode(stats, episode, events, team, mid)
+
+    return pressure_dataframe_from_stats(stats)
+
+
+def competition_pressure_per_player(match_ids, zip_paths):
+    """
+    Run the same pressured-episode analysis across every team in the competition.
+    """
+    events_by_match = load_match_events(match_ids, zip_paths)
+    stats = defaultdict(empty_pressure_statline)
+
+    for mid, events in events_by_match.items():
+        teams_in_match = sorted(
+            {
+                ev.get("team", {}).get("name")
+                for ev in events
+                if ev.get("team", {}).get("name")
+            }
+        )
+        for team in teams_in_match:
+            for episode in iter_pressure_episodes(events, team):
+                apply_pressure_episode(stats, episode, events, team, mid)
+
+    pressure_df = pressure_dataframe_from_stats(stats, include_team=True)
+    if pressure_df.empty:
+        return pressure_df
+
+    profiles_df = competition_player_profiles(match_ids, zip_paths)
+    if not profiles_df.empty:
+        pressure_df = pressure_df.merge(
+            profiles_df,
+            on=["player_id", "player"],
+            how="left",
+        )
+        pressure_df["team"] = pressure_df["team"].fillna(pressure_df["team_profile"])
+        pressure_df = pressure_df.drop(columns=["team_profile"])
+
+    return pressure_df.sort_values(
+        ["under_pressure_episodes", "mistake_total", "player"],
+        ascending=[False, False, True],
+    ).reset_index(drop=True)
+
+
+def olympiacos_position_mistake_ranks(competition_pressure_df, olympiacos_team=TEAM_STATSBOMB):
+    """
+    Rank Olympiacos players within their primary position by mistake percentage
+    under pressure. Lower mistake percentage ranks higher.
+    """
+    if competition_pressure_df.empty:
+        return pd.DataFrame()
+
+    ranked = competition_pressure_df[
+        competition_pressure_df["primary_position_id"].notna()
+    ].copy()
+    if ranked.empty:
+        return ranked
+
+    ranked["players_compared_at_position"] = ranked.groupby("primary_position_id")["player_id"].transform("count")
+    ranked["mistake_pct_rank_in_position"] = (
+        ranked.groupby("primary_position_id")["mistake_under_pressure_pct"]
+        .rank(method="min", ascending=True)
+        .astype(int)
     )
+    ranked["primary_position_id"] = ranked["primary_position_id"].astype(int)
+    ranked["primary_starting_position_id"] = ranked["primary_starting_position_id"].fillna(
+        ranked["primary_position_id"]
+    ).astype(int)
+    ranked["primary_position_abbreviation"] = ranked["primary_position_abbreviation"].fillna(
+        ranked["primary_starting_position_abbreviation"]
+    )
+
+    olympiacos_rows = ranked[ranked["team"] == olympiacos_team].copy()
+    olympiacos_rows = olympiacos_rows[
+        [
+            "player",
+            "team",
+            "primary_position_id",
+            "primary_position_abbreviation",
+            "under_pressure_episodes",
+            "success_under_pressure_pct",
+            "mistake_total",
+            "mistake_under_pressure_pct",
+            "mistake_pct_rank_in_position",
+            "players_compared_at_position",
+            "matches_played",
+            "starts",
+        ]
+    ]
+
+    return olympiacos_rows.sort_values(
+        ["primary_position_id", "mistake_pct_rank_in_position", "mistake_under_pressure_pct", "player"],
+        ascending=[True, True, True, True],
+    ).reset_index(drop=True)
+
+
+def competition_top10_under_pressure(competition_pressure_df, top_n=10, min_episodes=50):
+    if competition_pressure_df.empty:
+        return pd.DataFrame()
+
+    filtered_df = competition_pressure_df[
+        competition_pressure_df["under_pressure_episodes"] >= min_episodes
+    ].copy()
+    if filtered_df.empty:
+        return pd.DataFrame()
+
+    columns = [
+        "player",
+        "team",
+        "primary_position_abbreviation",
+        "under_pressure_episodes",
+        "success_under_pressure_pct",
+        "mistake_under_pressure_pct",
+    ]
+    available_columns = [column for column in columns if column in filtered_df.columns]
+
+    return filtered_df.sort_values(
+        ["success_under_pressure_pct", "under_pressure_episodes", "player"],
+        ascending=[False, False, True],
+    ).head(top_n)[available_columns].reset_index(drop=True)
 
 
 def conceded_pressure_mistake_events(match_ids, team, zip_paths):
@@ -1043,16 +1149,13 @@ def corner_analysis(match_ids, team, zip_path):
     return pd.concat([df, summary], ignore_index=True)
 
 
-def csv_to_markdown(csv_path, output_path=None):
-    df = pd.read_csv(csv_path)
-    md = df.to_markdown(index=False)
-    
-    if output_path:
-        with open(output_path, "w") as f:
-            f.write(md)
-        print(f"Saved: {output_path}")
-    else:
-        print(md)
+# Under-pressure analysis now lives in `under_pressure_stats.py`.
+competition_match_ids = ups.competition_match_ids
+pressure_per_player = ups.pressure_per_player
+competition_pressure_per_player = ups.competition_pressure_per_player
+olympiacos_position_mistake_ranks = ups.olympiacos_position_mistake_ranks
+competition_top10_under_pressure = ups.competition_top10_under_pressure
+conceded_pressure_mistake_events = ups.conceded_pressure_mistake_events
 
 
 if __name__ == "__main__":
@@ -1150,6 +1253,19 @@ if __name__ == "__main__":
     pressure_df = pressure_per_player(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(pressure_df.to_markdown(index=False))
 
+    competition_ids = competition_match_ids(ZIP_PATHS)
+    print("\n=== COMPETITION PRESSURE PER PLAYER ===")
+    competition_pressure_df = competition_pressure_per_player(competition_ids, ZIP_PATHS)
+    print(competition_pressure_df.head(20).to_markdown(index=False))
+
+    print("\n=== OLYMPIACOS POSITION RANKS BY MISTAKE % UNDER PRESSURE ===")
+    olympiacos_position_ranks_df = olympiacos_position_mistake_ranks(competition_pressure_df)
+    print(olympiacos_position_ranks_df.to_markdown(index=False))
+
+    print("\n=== TOP 10 PLAYERS UNDER PRESSURE IN THE COMPETITION ===")
+    top10_under_pressure_df = competition_top10_under_pressure(competition_pressure_df, top_n=10)
+    print(top10_under_pressure_df.to_markdown(index=False))
+
     print("\n=== PRESSURED MISTAKES THAT LED TO GOALS OR PENALTIES CONCEDED ===")
     conceded_events = conceded_pressure_mistake_events(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     if conceded_events:
@@ -1170,6 +1286,18 @@ if __name__ == "__main__":
     xg_passer.to_csv(os.path.join(OUTPUT_DIR, "xg_by_passer.csv"), index=False)
     corners.to_csv(os.path.join(OUTPUT_DIR, "corner_analysis.csv"), index=False)
     pressure_df.to_csv(os.path.join(OUTPUT_DIR, "pressure_per_payer.csv"), index=False)
+    competition_pressure_df.to_csv(os.path.join(OUTPUT_DIR, "competition_pressure_per_player.csv"), index=False)
+    competition_pressure_df[
+        competition_pressure_df["team"] != TEAM_STATSBOMB
+    ].to_csv(os.path.join(OUTPUT_DIR, "competition_pressure_other_players.csv"), index=False)
+    olympiacos_position_ranks_df.to_csv(
+        os.path.join(OUTPUT_DIR, "olympiacos_pressure_position_ranks.csv"),
+        index=False,
+    )
+    top10_under_pressure_df.to_csv(
+        os.path.join(OUTPUT_DIR, "competition_top10_under_pressure.csv"),
+        index=False,
+    )
 
     print(f"Saved CSVs to {OUTPUT_DIR}/")
 
@@ -1197,6 +1325,14 @@ if __name__ == "__main__":
                     os.path.join(OUTPUT_DIR, "xg_by_passer.md"))
     csv_to_markdown(os.path.join(OUTPUT_DIR, "corner_analysis.csv"),
                     os.path.join(OUTPUT_DIR, "corner_analysis.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "competition_pressure_per_player.csv"),
+                    os.path.join(OUTPUT_DIR, "competition_pressure_per_player.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "competition_pressure_other_players.csv"),
+                    os.path.join(OUTPUT_DIR, "competition_pressure_other_players.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "olympiacos_pressure_position_ranks.csv"),
+                    os.path.join(OUTPUT_DIR, "olympiacos_pressure_position_ranks.md"))
+    csv_to_markdown(os.path.join(OUTPUT_DIR, "competition_top10_under_pressure.csv"),
+                    os.path.join(OUTPUT_DIR, "competition_top10_under_pressure.md"))
 
 
 
