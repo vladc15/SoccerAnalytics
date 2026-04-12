@@ -10,7 +10,10 @@ import imageio_ffmpeg
 import pandas as pd
 
 
-ZIP_PATH = "data/statsbomb/league_phase.zip"
+ZIP_PATHS = [
+    "data/statsbomb/league_phase.zip",
+    "data/statsbomb/playoffs.zip",
+]
 MATCHES_CSV = "data/matches.csv"
 EVENTVIDEO_SCRIPT = "data/wyscout/eventvideo/eventvideo.py"
 CONCAT_LIST = "clips.txt"
@@ -36,13 +39,18 @@ def get_wyscout_match_id(statsbomb_match_id, matches_csv):
     return row.iloc[0]["wyscout"]
 
 
-def load_match_events(statsbomb_match_id, zip_path):
+def load_match_events(statsbomb_match_id, zip_paths):
     match_file = f"{statsbomb_match_id}.json"
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        if match_file not in zf.namelist():
-            raise ValueError(f"{match_file} not found in {zip_path}")
-        with zf.open(match_file) as f:
-            return json.load(f)
+    events = []
+    for one_zip_path in zip_paths:
+        with zipfile.ZipFile(one_zip_path, "r") as zf:
+            if match_file not in zf.namelist():
+                continue
+            with zf.open(match_file) as f:
+                events.extend(json.load(f))
+    if not events:
+        raise ValueError(f"{match_file} not found in {zip_paths}")
+    return events
 
 
 def find_event(events, event_id):
@@ -120,7 +128,7 @@ def main():
 
     wyscout_match_id = get_wyscout_match_id(args.match_id, MATCHES_CSV)
 
-    events = load_match_events(args.match_id, ZIP_PATH)
+    events = load_match_events(args.match_id, ZIP_PATHS)
     event = find_event(events, args.event_id)
     event_seconds = compute_event_seconds(events, event)
 

@@ -7,23 +7,27 @@ from collections import defaultdict
 
 TEAM_MATCHES_CSV = "Olympiacos Piraeus"
 TEAM_STATSBOMB = "Olympiacos"
-ZIP_PATH = "data/statsbomb/league_phase.zip"
+ZIP_PATHS = [
+    "data/statsbomb/league_phase.zip",
+    "data/statsbomb/playoffs.zip",
+]
 MATCHES_CSV = "data/matches.csv"
 
-def load_events(match_ids, zip_path):
+def load_events(match_ids, zip_paths):
     """Load all events for a list of match IDs from the zip archive.
     Returns a flat list of (match_id, event) tuples."""
     records = []
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        names = zf.namelist()
-        for mid in match_ids:
-            candidates = [n for n in names if n.endswith(f"{mid}.json")]
-            if not candidates:
-                print(f"  warning: {mid}.json not found")
-                continue
-            with zf.open(candidates[0]) as f:
-                for ev in json.load(f):
-                    records.append((mid, ev))
+
+    for one_zip_path in zip_paths:
+        with zipfile.ZipFile(one_zip_path, "r") as zf:
+            names = zf.namelist()
+            for mid in match_ids:
+                candidates = [n for n in names if n.endswith(f"{mid}.json")]
+                if not candidates:
+                    continue
+                with zf.open(candidates[0]) as f:
+                    for ev in json.load(f):
+                        records.append((mid, ev))
     return records
 
 def team_events(records, team):
@@ -31,18 +35,18 @@ def team_events(records, team):
     return [(mid, ev) for mid, ev in records if ev.get("team", {}).get("name") == team]
 
 
-def load_match_events(match_ids, zip_path):
+def load_match_events(match_ids, zip_paths):
     """Load events keyed by match_id to preserve within-match sequencing."""
     events_by_match = {}
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        names = set(zf.namelist())
-        for mid in match_ids:
-            name = f"{mid}.json"
-            if name not in names:
-                print(f"  warning: {name} not found")
-                continue
-            with zf.open(name) as f:
-                events_by_match[mid] = json.load(f)
+    for one_zip_path in zip_paths:
+        with zipfile.ZipFile(one_zip_path, "r") as zf:
+            names = set(zf.namelist())
+            for mid in match_ids:
+                name = f"{mid}.json"
+                if name not in names:
+                    continue
+                with zf.open(name) as f:
+                    events_by_match[mid] = json.load(f)
     return events_by_match
 
 
@@ -188,6 +192,40 @@ def scan_mistake_fallout(events, start_idx, regain_idx, team, player):
     return fallout
 
 
+def goal_or_penalty_conceded_before_regain(events, start_idx, regain_idx, team):
+    """
+    Check whether the team concedes a goal or penalty before it regains possession.
+    """
+    goal_conceded = False
+    penalty_conceded = False
+
+    for ev in events[start_idx:regain_idx]:
+        etype = event_type_name(ev)
+
+        if (
+            etype == "Shot"
+            and ev.get("team", {}).get("name") != team
+            and ev.get("shot", {}).get("outcome", {}).get("name") == "Goal"
+        ):
+            goal_conceded = True
+
+        if etype == "Own Goal Against" and ev.get("team", {}).get("name") == team:
+            goal_conceded = True
+
+        if (
+            etype == "Foul Committed"
+            and ev.get("team", {}).get("name") == team
+            and ev.get("foul_committed", {}).get("penalty")
+        ):
+            penalty_conceded = True
+
+    return {
+        "goal_conceded": goal_conceded,
+        "penalty_conceded": penalty_conceded,
+        "goal_or_penalty_conceded": goal_conceded or penalty_conceded,
+    }
+
+
 def summarize_counter(counter_obj):
     if not counter_obj:
         return ""
@@ -239,7 +277,7 @@ def iter_pressure_episodes(events, team):
         i = j
 
 
-def pressure_per_player(match_ids, team, zip_path):
+def pressure_per_player(match_ids, team, zip_paths):
     """
     Consolidate consecutive under-pressure events into player episodes.
 
@@ -250,7 +288,7 @@ def pressure_per_player(match_ids, team, zip_path):
       - for mistakes, track if the same player fouled / got booked before
         Olympiacos regained possession, and whether the team conceded
     """
-    events_by_match = load_match_events(match_ids, zip_path)
+    events_by_match = load_match_events(match_ids, zip_paths)
 
     stats = defaultdict(lambda: {
         "under_pressure_episodes": 0,
@@ -329,6 +367,9 @@ def pressure_per_player(match_ids, team, zip_path):
             "primary_mistake": s["primary_mistake"],
             "other_mistake": s["other_mistake"],
             "mistake_total": s["mistake_total"],
+            "mistake_under_pressure_pct": round(
+                s["mistake_total"] / s["under_pressure_episodes"] * 100, 1
+            ) if s["under_pressure_episodes"] > 0 else 0.0,
             "fouled_after_mistake": s["fouled_after_mistake"],
             "booked_after_mistake": s["booked_after_mistake"],
             "conceded_after_mistake": s["conceded_after_mistake"],
@@ -343,12 +384,12 @@ def pressure_per_player(match_ids, team, zip_path):
     )
 
 
-def conceded_pressure_mistake_events(match_ids, team, zip_path):
+def conceded_pressure_mistake_events(match_ids, team, zip_paths):
     """
     Return full pressured-mistake events where the subsequent opponent phase
-    ended in a goal before the team regained possession.
+    ended in a goal or penalty conceded before the team regained possession.
     """
-    events_by_match = load_match_events(match_ids, zip_path)
+    events_by_match = load_match_events(match_ids, zip_paths)
     conceded_events = []
 
     for mid, events in events_by_match.items():
@@ -363,19 +404,24 @@ def conceded_pressure_mistake_events(match_ids, team, zip_path):
                 continue
 
             regain_idx = first_possession_regain_index(events, global_last_idx + 1, team)
-            fallout = scan_mistake_fallout(
+            concession = goal_or_penalty_conceded_before_regain(
                 events,
                 global_last_idx + 1,
                 regain_idx,
                 team,
-                episode["player"],
             )
-            if fallout["conceded_after_mistake"]:
+            if concession["goal_or_penalty_conceded"]:
+                reasons = []
+                if concession["goal_conceded"]:
+                    reasons.append("goal")
+                if concession["penalty_conceded"]:
+                    reasons.append("penalty")
                 conceded_events.append({
                     "match_id": mid,
                     "player": episode["player"],
                     "event_index": last_ev.get("index"),
                     "event_type": event_type_name(last_ev),
+                    "reason": "+".join(reasons),
                     "event": last_ev,
                 })
 
@@ -1017,8 +1063,10 @@ if __name__ == "__main__":
     all_ids = team_matches["statsbomb"].tolist()
     print(f"{TEAM_MATCHES_CSV}: {len(all_ids)} games")
 
-    with zipfile.ZipFile(ZIP_PATH) as zf:
-        available = set(zf.namelist())
+    available = set()
+    for one_zip_path in ZIP_PATHS:
+        with zipfile.ZipFile(one_zip_path) as zf:
+            available.update(zf.namelist())
 
     match_ids = [mid for mid in all_ids if f"{mid}.json" in available]
     missing = [mid for mid in all_ids if f"{mid}.json" not in available]
@@ -1029,29 +1077,29 @@ if __name__ == "__main__":
 
     # 1. Physical
     print("=== MODULE 1: Physical Stats ===")
-    phys = physical_stats(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    phys = physical_stats(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(phys.to_markdown(index=False))
 
     print("\n--- Errors by pitch zone ---")
-    zone_df = error_by_pitch_zone(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    zone_df = error_by_pitch_zone(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(zone_df.to_markdown())
 
     print("\n--- Errors by minute ---")
-    time_df = error_by_minute(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    time_df = error_by_minute(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(time_df.to_markdown(index=False))
 
     # 2. Technical
     print("\n=== MODULE 2: Technical Stats ===")
-    tech = technical_stats(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    tech = technical_stats(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(tech.to_markdown(index=False))
 
     print("\n--- Shots with low xG (< 0.10) ---")
-    poor = shot_decision_quality(match_ids, TEAM_STATSBOMB, ZIP_PATH, xg_threshold=0.10)
+    poor = shot_decision_quality(match_ids, TEAM_STATSBOMB, ZIP_PATHS, xg_threshold=0.10)
     print(poor.to_markdown(index=False))
 
     # 3. Passing network
     print("\n=== MODULE 3: Passing Network ===")
-    net = build_pass_network(match_ids, TEAM_STATSBOMB, ZIP_PATH, min_passes=5)
+    net = build_pass_network(match_ids, TEAM_STATSBOMB, ZIP_PATHS, min_passes=5)
     print(net.head(20).to_markdown(index=False))
 
     centrality = player_flow_centrality(net)
@@ -1059,7 +1107,7 @@ if __name__ == "__main__":
     print(centrality.to_markdown(index=False))
 
     print("\n--- Pass Cluster Profile ---")
-    clusters = pass_cluster_profile(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    clusters = pass_cluster_profile(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(clusters.head(15).to_markdown(index=False))
 
 
@@ -1078,41 +1126,42 @@ if __name__ == "__main__":
 
     # physical proxy
     print("\n=== FATIGUE PROXY ===")
-    fatigue = fatigue_proxy(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    fatigue = fatigue_proxy(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(fatigue.to_markdown(index=False))
 
     print("\n=== INJURY PRONENESS ===")
-    injuries = injury_proneness(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    injuries = injury_proneness(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(injuries.to_markdown(index=False))
 
     # technical extras
     print("\n=== SHOT DISTANCE STATS ===")
-    shot_dist = shot_distance_stats(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    shot_dist = shot_distance_stats(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(shot_dist.to_markdown(index=False))
 
     print("\n=== XG CONDITIONED ON PASSER ===")
-    xg_passer = xg_conditioned_on_passer(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    xg_passer = xg_conditioned_on_passer(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(xg_passer.to_markdown(index=False))
 
     print("\n=== CORNER ANALYSIS ===")
-    corners = corner_analysis(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    corners = corner_analysis(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(corners.to_markdown(index=False))
 
     print("\n=== PRESSURE PER PLAYER ===")
-    pressure_df = pressure_per_player(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    pressure_df = pressure_per_player(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     print(pressure_df.to_markdown(index=False))
 
-    print("\n=== PRESSURED MISTAKES THAT LED TO GOALS CONCEDED ===")
-    conceded_events = conceded_pressure_mistake_events(match_ids, TEAM_STATSBOMB, ZIP_PATH)
+    print("\n=== PRESSURED MISTAKES THAT LED TO GOALS OR PENALTIES CONCEDED ===")
+    conceded_events = conceded_pressure_mistake_events(match_ids, TEAM_STATSBOMB, ZIP_PATHS)
     if conceded_events:
         for item in conceded_events:
             print(
                 f"match {item['match_id']} | player {item['player']} | "
-                f"event_index {item['event_index']} | type {item['event_type']}"
+                f"event_index {item['event_index']} | type {item['event_type']} | "
+                f"reason {item['reason']}"
             )
             print(json.dumps(item["event"], ensure_ascii=True, indent=2))
     else:
-        print("No pressured mistakes leading directly to conceded goals found.")
+        print("No pressured mistakes leading to conceded goals or penalties found.")
 
     # save to CSV
     fatigue.to_csv(os.path.join(OUTPUT_DIR, "fatigue_proxy.csv"), index=False)

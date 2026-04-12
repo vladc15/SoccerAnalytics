@@ -1,18 +1,21 @@
 | player                              |   shot_assists |   goals_assisted |   avg_xg_created |   total_xg_created |   conversion_rate |
 |:------------------------------------|---------------:|-----------------:|-----------------:|-------------------:|------------------:|
-| Mehdi Taremi                        |              8 |                2 |            0.161 |              1.291 |              25   |
-| Rodinei Marcelo de Almeida          |              8 |                2 |            0.141 |              1.124 |              25   |
+| Mehdi Taremi                        |              9 |                2 |            0.144 |              1.3   |              22.2 |
+| Rodinei Marcelo de Almeida          |              9 |                2 |            0.137 |              1.233 |              22.2 |
+| Christos Mouzakitis                 |             14 |                0 |            0.075 |              1.047 |               0   |
 | Francisco Leonel Lima Silva Machado |             16 |                2 |            0.053 |              0.85  |              12.5 |
-| Christos Mouzakitis                 |              8 |                0 |            0.097 |              0.776 |               0   |
+| Santiago Hezze                      |             10 |                1 |            0.051 |              0.509 |              10   |
 | Daniel Castelo Podence              |             10 |                0 |            0.048 |              0.48  |               0   |
-| Santiago Hezze                      |              6 |                1 |            0.07  |              0.421 |              16.7 |
-| Ayoub El Kaabi                      |              7 |                1 |            0.043 |              0.303 |              14.3 |
+| Ayoub El Kaabi                      |              9 |                1 |            0.042 |              0.376 |              11.1 |
 | Gelson Dany Batalha Martins         |              4 |                0 |            0.075 |              0.301 |               0   |
 | Konstantinos Tzolakis               |              1 |                0 |            0.291 |              0.291 |               0   |
-| Francisco Gabriel Ortega            |              3 |                0 |            0.087 |              0.262 |               0   |
+| Francisco Gabriel Ortega            |              4 |                0 |            0.067 |              0.268 |               0   |
 | Gabriel Tadeu Strefezza Rebelato    |              2 |                1 |            0.085 |              0.169 |              50   |
+| Lorenzo Pirola                      |              3 |                0 |            0.043 |              0.129 |               0   |
 | Giulian Biancone                    |              1 |                0 |            0.127 |              0.127 |               0   |
-| Lorenzo Pirola                      |              2 |                0 |            0.056 |              0.112 |               0   |
-| Daniel Garc�a Carrillo              |              1 |                0 |            0.094 |              0.094 |               0   |
+| Daniel García Carrillo              |              1 |                0 |            0.094 |              0.094 |               0   |
 | Diogo Andre Santos Nascimento       |              1 |                0 |            0.077 |              0.077 |               0   |
-| Jo�o Pedro Loureiro da Costa        |              1 |                0 |            0.051 |              0.051 |               0   |
+| André Luiz Inácio da Silva          |              2 |                0 |            0.03  |              0.06  |               0   |
+| Clayton Fernandes Silva             |              1 |                0 |            0.054 |              0.054 |               0   |
+| João Pedro Loureiro da Costa        |              1 |                0 |            0.051 |              0.051 |               0   |
+| Lorenzo Scipioni                    |              1 |                0 |            0.04  |              0.04  |               0   |

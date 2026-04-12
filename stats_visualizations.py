@@ -12,6 +12,14 @@ from scipy.ndimage import gaussian_filter
 import networkx as nx
 import os
 
+from stats_extraction import conceded_pressure_mistake_events
+
+
+ZIP_PATHS = [
+    "data/statsbomb/league_phase.zip",
+    "data/statsbomb/playoffs.zip",
+]
+
 
 def draw_pitch(ax, pitch_color="#1a1a2e", line_color="white", alpha=0.9):
     ax.set_facecolor(pitch_color)
@@ -53,19 +61,19 @@ def draw_pitch(ax, pitch_color="#1a1a2e", line_color="white", alpha=0.9):
 
 
 
-def load_events(match_ids, zip_path):
+def load_events(match_ids, zip_paths):
     records = []
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        names = zf.namelist()
-        for mid in match_ids:
-            candidates = [n for n in names if n.endswith(f"{mid}.json")]
-            if not candidates:
-                continue
-            with zf.open(candidates[0]) as f:
-                for ev in json.load(f):
-                    records.append((mid, ev))
+    for one_zip_path in zip_paths:
+        with zipfile.ZipFile(one_zip_path, "r") as zf:
+            names = zf.namelist()
+            for mid in match_ids:
+                candidates = [n for n in names if n.endswith(f"{mid}.json")]
+                if not candidates:
+                    continue
+                with zf.open(candidates[0]) as f:
+                    for ev in json.load(f):
+                        records.append((mid, ev))
     return records
-
 
 def team_events(records, team):
     return [(mid, ev) for mid, ev in records if ev.get("team", {}).get("name") == team]
@@ -100,6 +108,20 @@ def make_heatmap(coords, sigma=3, bins=(120, 80)):
     return gaussian_filter(heatmap, sigma=sigma)
 
 
+def conceded_pressure_mistake_locations(match_ids, team, zip_path):
+    """
+    Return locations of pressured mistakes that led to a goal or penalty
+    conceded before the team regained possession.
+    """
+    coords = []
+    for item in conceded_pressure_mistake_events(match_ids, team, zip_path):
+        loc = item["event"].get("location")
+        if loc:
+            coords.append((loc[0], loc[1]))
+
+    return coords
+
+
 CMAP_RED   = LinearSegmentedColormap.from_list("red_hm",   ["#1a1a2e", "#6a0f2a", "#c0392b", "#e74c3c", "#ff8a80"])
 CMAP_BLUE  = LinearSegmentedColormap.from_list("blue_hm",  ["#1a1a2e", "#0d2b5e", "#1565c0", "#42a5f5", "#b3e5fc"])
 CMAP_GREEN = LinearSegmentedColormap.from_list("green_hm", ["#1a1a2e", "#0a3d1f", "#1b5e20", "#43a047", "#b9f6ca"])
@@ -109,6 +131,7 @@ CMAP_GOLD  = LinearSegmentedColormap.from_list("gold_hm",  ["#1a1a2e", "#4a2c00"
 def plot_error_heatmap(match_ids, team, zip_path, save_path="heatmap_errors.png"):
     records = load_events(match_ids, zip_path)
     coords = extract_locations(records, team, type_ids={38, 3})
+    conceded_coords = conceded_pressure_mistake_locations(match_ids, team, zip_path)
 
     fig, ax = plt.subplots(figsize=(12, 8), facecolor="#1a1a2e")
     draw_pitch(ax)
@@ -123,10 +146,45 @@ def plot_error_heatmap(match_ids, team, zip_path, save_path="heatmap_errors.png"
         xs, ys = zip(*coords)
         ax.scatter(xs, ys, s=18, color="white", alpha=0.35, linewidths=0)
 
+    if conceded_coords:
+        cxs, cys = zip(*conceded_coords)
+        ax.scatter(
+            cxs,
+            cys,
+            s=120,
+            color="#ffca28",
+            alpha=0.95,
+            edgecolors="#7f0000",
+            linewidths=1.0,
+            marker="X",
+            zorder=5,
+        )
+
     ax.set_title(
         f"{team} - errors on field (miscontrol + dispossessed)\n"
-        f"n={len(coords)} events · {len(match_ids)} matches",
+        f"n={len(coords)} events · {len(conceded_coords)} pressured mistakes led to goal/penalty conceded · {len(match_ids)} matches",
         color="white", fontsize=13, pad=12, fontweight="bold"
+    )
+
+    legend_elements = [
+        mpatches.Patch(facecolor="white", alpha=0.35, label=f"Errors ({len(coords)})"),
+        plt.Line2D(
+            [0], [0],
+            marker="X",
+            color="none",
+            markerfacecolor="#ffca28",
+            markeredgecolor="#7f0000",
+            markersize=10,
+            label=f"Pressure mistake -> goal/penalty conceded ({len(conceded_coords)})",
+        ),
+    ]
+    ax.legend(
+        handles=legend_elements,
+        loc="lower left",
+        facecolor="#1a1a2e",
+        labelcolor="white",
+        fontsize=10,
+        framealpha=0.8,
     )
 
     cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.7])
@@ -567,26 +625,30 @@ def plot_flow_centrality(match_ids, team, zip_path,
 if __name__ == "__main__":
     TEAM_MATCHES_CSV = "Olympiacos Piraeus"
     TEAM_JSON = "Olympiacos"
-    ZIP_PATH = "data/statsbomb/league_phase.zip"
     MATCHES_CSV = "data/matches.csv"
     OUT = "output/"
     os.makedirs(OUT, exist_ok=True)
 
     matches_df = pd.read_csv(MATCHES_CSV)
-    match_ids = matches_df[
+    raw_match_ids = matches_df[
         (matches_df["home"] == TEAM_MATCHES_CSV) | (matches_df["away"] == TEAM_MATCHES_CSV)
-    ]["statsbomb"].tolist()
+    ]["statsbomb"].astype(str).tolist()
+    available = set()
+    for one_zip_path in ZIP_PATHS:
+        with zipfile.ZipFile(one_zip_path) as zf:
+            available.update(zf.namelist())
+    match_ids = [mid for mid in raw_match_ids if f"{mid}.json" in available]
     print(f"{TEAM_MATCHES_CSV}: {len(match_ids)} matches")
 
-    plot_error_heatmap(match_ids, TEAM_JSON, ZIP_PATH,    OUT + "heatmap_errors.png")
-    plot_shot_heatmap(match_ids, TEAM_JSON, ZIP_PATH,     OUT + "heatmap_shots.png")
-    plot_pressure_heatmap(match_ids, TEAM_JSON, ZIP_PATH, OUT + "heatmap_pressure.png")
-    plot_pass_heatmap(match_ids, TEAM_JSON, ZIP_PATH,     OUT + "heatmap_passes.png")
-    plot_passing_network(match_ids, TEAM_JSON, ZIP_PATH,  OUT + "passing_network.png")
+    plot_error_heatmap(match_ids, TEAM_JSON, ZIP_PATHS,    OUT + "heatmap_errors.png")
+    plot_shot_heatmap(match_ids, TEAM_JSON, ZIP_PATHS,     OUT + "heatmap_shots.png")
+    plot_pressure_heatmap(match_ids, TEAM_JSON, ZIP_PATHS, OUT + "heatmap_pressure.png")
+    plot_pass_heatmap(match_ids, TEAM_JSON, ZIP_PATHS,     OUT + "heatmap_passes.png")
+    plot_passing_network(match_ids, TEAM_JSON, ZIP_PATHS,  OUT + "passing_network.png")
 
-    plot_pass_clusters(match_ids, TEAM_JSON, ZIP_PATH,
+    plot_pass_clusters(match_ids, TEAM_JSON, ZIP_PATHS,
                        OUT + "pass_clusters.png")
 
-    plot_flow_centrality(match_ids, TEAM_JSON, ZIP_PATH,
+    plot_flow_centrality(match_ids, TEAM_JSON, ZIP_PATHS,
                          OUT + "flow_centrality.png",
                          min_passes=5, top_n=20)

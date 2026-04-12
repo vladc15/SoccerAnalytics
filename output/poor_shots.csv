@@ -1,62 +1,81 @@
 player,minute,xG,outcome,location,technique
+Rodinei Marcelo de Almeida,72,0.006,Saved,"[87.2, 13.1, 0.0]",Normal
+Francisco Gabriel Ortega,66,0.006,Blocked,"[90.6, 22.9, 0.0]",Normal
 Santiago Hezze,82,0.007,Wayward,"[70.0, 73.5, 0.0]",Lob
 Daniel Castelo Podence,63,0.008,Saved,"[108.2, 60.0, 0.0]",Normal
-Gelson Dany Batalha Martins,48,0.009,Blocked,"[116.4, 24.2, 0.0]",Normal
+Gelson Dany Batalha Martins,49,0.009,Saved,"[107.8, 58.8, 0.32]",Half Volley
 Panagiotis Retsos,42,0.009,Blocked,"[99.6, 59.7, 0.0]",Normal
+Gelson Dany Batalha Martins,48,0.009,Blocked,"[116.4, 24.2, 0.0]",Normal
 Gelson Dany Batalha Martins,4,0.01,Off T,"[110.4, 19.5, 0.0]",Normal
 Gabriel Tadeu Strefezza Rebelato,76,0.012,Off T,"[91.5, 25.0, 0.0]",Normal
+Sopuruchukwu Bruno Onyemaechi,85,0.013,Off T,"[92.5, 24.7, 0.0]",Normal
+Gelson Dany Batalha Martins,46,0.013,Off T,"[94.4, 56.8, 0.0]",Normal
 Christos Mouzakitis,68,0.013,Blocked,"[92.9, 26.5, 0.0]",Normal
+Gelson Dany Batalha Martins,24,0.013,Saved,"[90.6, 25.9, 0.0]",Normal
 Christos Mouzakitis,66,0.016,Blocked,"[95.0, 25.7, 0.28]",Half Volley
 Francisco Leonel Lima Silva Machado,84,0.016,Saved,"[113.9, 54.8, 0.0]",Normal
-João Pedro Loureiro da Costa,21,0.017,Off T,"[96.5, 56.9, 0.0]",Normal
 Christos Mouzakitis,66,0.017,Wayward,"[93.9, 31.4, 0.44]",Volley
+Lorenzo Scipioni,88,0.017,Off T,"[91.6, 26.2, 0.0]",Normal
+João Pedro Loureiro da Costa,21,0.017,Off T,"[96.5, 56.9, 0.0]",Normal
 Gelson Dany Batalha Martins,72,0.017,Goal,"[117.7, 52.1, 0.0]",Normal
-Panagiotis Retsos,67,0.022,Saved,"[98.0, 56.9, 0.0]",Normal
-Francisco Leonel Lima Silva Machado,5,0.022,Blocked,"[87.8, 43.6, 0.0]",Normal
 Gelson Dany Batalha Martins,59,0.022,Blocked,"[104.8, 56.6, 0.0]",Normal
-Daniel García Carrillo,33,0.023,Blocked,"[94.2, 45.7, 0.47]",Half Volley
-Christos Mouzakitis,73,0.023,Off T,"[92.3, 47.7, 0.0]",Normal
+Francisco Leonel Lima Silva Machado,5,0.022,Blocked,"[87.8, 43.6, 0.0]",Normal
+Panagiotis Retsos,67,0.022,Saved,"[98.0, 56.9, 0.0]",Normal
 Ayoub El Kaabi,41,0.023,Blocked,"[92.0, 42.5, 0.0]",Normal
+Christos Mouzakitis,73,0.023,Off T,"[92.3, 47.7, 0.0]",Normal
+Daniel García Carrillo,33,0.023,Blocked,"[94.2, 45.7, 0.47]",Half Volley
+Francisco Leonel Lima Silva Machado,73,0.025,Blocked,"[88.7, 42.1, 0.0]",Normal
+Christos Mouzakitis,25,0.025,Blocked,"[95.5, 39.9, 0.42]",Half Volley
+Christos Mouzakitis,79,0.026,Blocked,"[89.2, 37.1, 0.0]",Normal
 Gelson Dany Batalha Martins,61,0.026,Off T,"[102.6, 54.7, 0.47]",Volley
 Ayoub El Kaabi,21,0.027,Saved,"[93.7, 44.1, 0.0]",Normal
 Ayoub El Kaabi,82,0.028,Blocked,"[100.5, 38.3, 0.39]",Half Volley
-Gelson Dany Batalha Martins,65,0.028,Saved,"[108.4, 23.0, 0.0]",Normal
 Gelson Dany Batalha Martins,26,0.028,Blocked,"[116.2, 29.3, 0.53]",Volley
+Gelson Dany Batalha Martins,65,0.028,Saved,"[108.4, 23.0, 0.0]",Normal
+André Luiz Inácio da Silva,71,0.029,Off T,"[90.5, 41.2, 0.0]",Normal
 Daniel Castelo Podence,36,0.029,Blocked,"[105.2, 29.5, 0.0]",Normal
 Francisco Leonel Lima Silva Machado,59,0.029,Saved,"[91.8, 39.8, 0.0]",Normal
-Stavros Pnevmonidis,88,0.03,Blocked,"[94.2, 38.4, 0.0]",Normal
+Gelson Dany Batalha Martins,53,0.03,Blocked,"[92.3, 44.7, 0.0]",Normal
 Christos Mouzakitis,14,0.03,Off T,"[95.0, 39.4, 0.2]",Half Volley
+Stavros Pnevmonidis,88,0.03,Blocked,"[94.2, 38.4, 0.0]",Normal
 Daniel Castelo Podence,6,0.031,Off T,"[89.3, 35.0, 0.0]",Normal
 Daniel Castelo Podence,72,0.031,Saved,"[100.0, 24.8, 0.0]",Normal
 Francisco Leonel Lima Silva Machado,4,0.032,Off T,"[94.0, 33.7, 0.31]",Half Volley
 Francisco Gabriel Ortega,62,0.032,Off T,"[107.0, 26.4, 0.0]",Normal
-Francisco Gabriel Ortega,75,0.033,Off T,"[112.0, 25.1, 0.28]",Half Volley
 Francisco Leonel Lima Silva Machado,19,0.033,Saved,"[92.7, 34.9, 0.0]",Normal
+Francisco Gabriel Ortega,75,0.033,Off T,"[112.0, 25.1, 0.28]",Half Volley
+Lorenzo Scipioni,87,0.034,Off T,"[108.5, 53.6, 0.0]",Normal
 João Pedro Loureiro da Costa,71,0.034,Blocked,"[98.8, 52.0, 0.0]",Normal
 Santiago Hezze,46,0.036,Blocked,"[100.2, 52.4, 0.0]",Normal
 João Pedro Loureiro da Costa,73,0.037,Blocked,"[100.3, 52.8, 0.0]",Normal
+Francisco Leonel Lima Silva Machado,7,0.038,Off T,"[97.4, 41.3, 0.0]",Normal
 Gelson Dany Batalha Martins,44,0.038,Wayward,"[104.0, 53.6, 0.14]",Half Volley
-Christos Mouzakitis,83,0.04,Blocked,"[95.8, 32.7, 0.0]",Normal
 Mehdi Taremi,93,0.04,Off T,"[105.9, 40.1, 2.19]",Normal
+Christos Mouzakitis,83,0.04,Blocked,"[95.8, 32.7, 0.0]",Normal
+André Luiz Inácio da Silva,90,0.04,Blocked,"[99.5, 41.3, 0.0]",Normal
 Mehdi Taremi,61,0.04,Off T,"[108.1, 39.3, 2.25]",Normal
 Gelson Dany Batalha Martins,33,0.04,Wayward,"[106.8, 36.2, 2.11]",Normal
 Ayoub El Kaabi,58,0.041,Blocked,"[95.3, 32.3, 0.0]",Normal
 Gelson Dany Batalha Martins,73,0.042,Off T,"[98.1, 35.8, 0.33]",Half Volley
 Francisco Leonel Lima Silva Machado,27,0.042,Off T,"[100.9, 49.8, 0.22]",Half Volley
-Daniel García Carrillo,19,0.043,Blocked,"[97.1, 41.7, 0.0]",Normal
 Francisco Leonel Lima Silva Machado,29,0.043,Blocked,"[94.1, 27.7, 0.0]",Normal
+Gelson Dany Batalha Martins,62,0.043,Blocked,"[102.2, 51.6, 0.0]",Normal
+Daniel García Carrillo,19,0.043,Blocked,"[97.1, 41.7, 0.0]",Normal
 Gabriel Tadeu Strefezza Rebelato,28,0.044,Blocked,"[107.1, 55.3, 0.0]",Normal
+Mehdi Taremi,4,0.044,Off T,"[98.1, 31.1, 0.33]",Half Volley
+André Luiz Inácio da Silva,83,0.045,Off T,"[99.2, 53.0, 0.0]",Normal
 Daniel Castelo Podence,0,0.045,Saved,"[97.6, 42.1, 0.0]",Normal
 Daniel García Carrillo,60,0.047,Blocked,"[102.4, 36.4, 0.67]",Volley
 Gabriel Tadeu Strefezza Rebelato,85,0.048,Off T,"[94.8, 37.7, 0.0]",Normal
-João Pedro Loureiro da Costa,73,0.048,Blocked,"[100.3, 45.1, 0.0]",Normal
 Santiago Hezze,78,0.048,Goal,"[112.4, 31.4, 2.12]",Normal
+João Pedro Loureiro da Costa,73,0.048,Blocked,"[100.3, 45.1, 0.0]",Normal
 Giulian Biancone,84,0.049,Saved Off Target,"[110.5, 43.6, 2.36]",Normal
 Mehdi Taremi,64,0.05,Wayward,"[109.6, 40.3, 2.39]",Normal
 Mehdi Taremi,36,0.051,Off T,"[107.2, 40.2, 1.44]",Overhead Kick
 Ayoub El Kaabi,82,0.052,Saved,"[105.0, 41.1, 2.31]",Normal
 Lorenzo Pirola,27,0.053,Off T,"[110.9, 34.8, 2.19]",Normal
 Francisco Leonel Lima Silva Machado,26,0.053,Blocked,"[102.6, 30.6, 0.0]",Normal
+Rodinei Marcelo de Almeida,94,0.054,Blocked,"[98.2, 43.1, 0.0]",Normal
 Daniel Castelo Podence,92,0.054,Blocked,"[100.3, 43.6, 0.0]",Normal
 Gabriel Tadeu Strefezza Rebelato,88,0.055,Blocked,"[101.1, 39.9, 0.28]",Half Volley
 Daniel Castelo Podence,59,0.056,Off T,"[103.1, 34.1, 0.94]",Volley
@@ -64,12 +83,12 @@ João Pedro Loureiro da Costa,12,0.057,Saved,"[112.5, 45.4, 2.11]",Normal
 Panagiotis Retsos,56,0.059,Off T,"[110.9, 35.6, 2.18]",Normal
 Gelson Dany Batalha Martins,65,0.066,Wayward,"[113.7, 50.8, 0.61]",Volley
 Ayoub El Kaabi,55,0.067,Blocked,"[97.6, 35.4, 0.0]",Normal
-Gelson Dany Batalha Martins,60,0.068,Post,"[109.6, 30.7, 1.0]",Volley
 Gelson Dany Batalha Martins,16,0.068,Goal,"[106.6, 52.4, 0.36]",Half Volley
+Gelson Dany Batalha Martins,60,0.068,Post,"[109.6, 30.7, 1.0]",Volley
 Ayoub El Kaabi,79,0.07,Blocked,"[111.2, 40.3, 2.22]",Normal
 Francisco Leonel Lima Silva Machado,7,0.075,Goal,"[100.0, 34.0, 0.28]",Half Volley
-Ayoub El Kaabi,18,0.077,Blocked,"[110.8, 38.6, 2.0]",Normal
 Gelson Dany Batalha Martins,86,0.077,Off T,"[104.7, 43.2, 0.0]",Normal
+Ayoub El Kaabi,18,0.077,Blocked,"[110.8, 38.6, 2.0]",Normal
 Francisco Leonel Lima Silva Machado,2,0.081,Off T,"[100.5, 44.9, 0.0]",Normal
 Francisco Leonel Lima Silva Machado,56,0.082,Off T,"[98.3, 46.5, 0.0]",Normal
 Ayoub El Kaabi,6,0.083,Off T,"[112.1, 42.8, 2.33]",Normal

@@ -29,7 +29,9 @@ Arguments:
 ### How it works
 
 1. Looks up the equivalent `wyscout` match id in `data/matches.csv`
-2. Loads the StatsBomb match from `data/statsbomb/league_phase.zip`
+2. Loads the StatsBomb match from:
+   - `data/statsbomb/league_phase.zip`
+   - `data/statsbomb/playoffs.zip`
 3. Finds the requested event
 4. Converts the event timestamp to seconds:
    - if the event is in period 1, it uses the event timestamp directly
